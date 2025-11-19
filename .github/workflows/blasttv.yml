@@ -1,0 +1,33 @@
+name: BlastTV Updater
+
+on:
+  schedule:
+    - cron: "*/2 * * * *"   # runs every 2 minutes
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: pip install requests
+
+    - name: Run BlastTV fetch script
+      run: python fetch_blasttv.py
+
+    - name: Commit and push
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+        git add playlist.m3u8
+        git commit -m "Auto-update playlist" || exit 0
+        git push
