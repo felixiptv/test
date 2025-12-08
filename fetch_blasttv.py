@@ -1,56 +1,71 @@
 import requests
 import json
-from datetime import datetime
 
-BASE_API_LIST = "https://app.blasttv.ph/api/v2/event/live?p=1&rpp=25"
-EVENT_API = "https://app.blasttv.ph/api/v4/event/{}?includePlaybackDetails=URL&displayGeoblocked=HIDE"
+LOGIN_URL = "https://app.blasttv.ph/api/v2/auth/login"
+LIVE_URL  = "https://app.blasttv.ph/api/v2/event/live?p=1&rpp=25"
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json"
-}
+EMAIL = "candadofrances@gmail.com"
+PASSWORD = "Lmatt0603!"
 
-def fetch_event_ids():
-    try:
-        r = requests.get(BASE_API_LIST, headers=HEADERS)
-        r.raise_for_status()
-        data = r.json()
-        event_ids = [item["id"] for item in data.get("data", [])]
-        return event_ids
-    except Exception as e:
-        print("Error fetching event IDs:", e)
-        return []
 
-def fetch_m3u8(event_id):
-    try:
-        r = requests.get(EVENT_API.format(event_id), headers=HEADERS)
-        r.raise_for_status()
-        data = r.json()
+def get_token():
+    payload = {
+        "email": EMAIL,
+        "password": PASSWORD
+    }
 
-        playback = data.get("playbackDetails", {})
-        url = playback.get("url") or playback.get("streamUrl")
+    headers = {
+        "content-type": "application/json",
+        "origin": "https://app.blasttv.ph",
+        "referer": "https://app.blasttv.ph/"
+    }
 
-        return url
-    except Exception as e:
-        print(f"Error fetching m3u8 for event {event_id}:", e)
+    res = requests.post(LOGIN_URL, json=payload, headers=headers)
+
+    if res.status_code != 200:
+        print("Login failed:", res.text)
         return None
 
-def generate_playlist():
-    event_ids = fetch_event_ids()
+    data = res.json()
+    return data.get("data", {}).get("access_token")
 
-    lines = ["#EXTM3U", f"# Generated: {datetime.now()}"]
 
-    for eid in event_ids:
-        m3u8 = fetch_m3u8(eid)
-        if m3u8:
-            lines.append(f"#EXTINF:-1 tvg-id=\"{eid}\", BLASTTV Event {eid}")
-            lines.append(m3u8)
+def fetch_live_streams(token):
+    headers = {
+        "authorization": f"Bearer {token}",
+        "origin": "https://app.blasttv.ph",
+        "referer": "https://app.blasttv.ph/"
+    }
 
-    with open("playlist.m3u8", "w") as f:
-        f.write("\n".join(lines))
+    res = requests.get(LIVE_URL, headers=headers)
 
-    print("playlist.m3u8 updated!")
+    if res.status_code != 200:
+        print("Error fetching streams:", res.text)
+        return None
+
+    return res.json()
+
+
+def main():
+    token = get_token()
+    if not token:
+        return
+
+    print("Token acquired!\n")
+
+    events_json = fetch_live_streams(token)
+    print(json.dumps(events_json, indent=4))
+
+    # Example: extract stream URL (depends on structure)
+    for event in events_json.get("data", []):
+        print("\nEvent:", event.get("title"))
+        if "stream_url" in event:
+            print("Stream:", event["stream_url"])
+        elif "url" in event:
+            print("URL:", event["url"])
+        else:
+            print("No stream URL found yet")
+
 
 if __name__ == "__main__":
-    generate_playlist()
-  
+    main()
