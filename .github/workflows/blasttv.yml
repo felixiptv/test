@@ -1,11 +1,11 @@
 name: BlastTV Updater
 
 permissions:
-  contents: write    # REQUIRED so actions can push changes
+  contents: write    # Needed so actions can push changes
 
 on:
   schedule:
-    - cron: "*/2 * * * *"
+    - cron: "*/2 * * * *"   # Every 2 minutes (adjust as needed)
   workflow_dispatch:
 
 jobs:
@@ -13,26 +13,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-      with:
-        persist-credentials: true   # needed to push using bot token
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true   # needed to push using bot token
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
-    - name: Install dependencies
-      run: pip install requests
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install
 
-    - name: Run BlastTV fetch script
-      run: python fetch_blasttv.py
+      - name: Run BlastTV fetch script
+        run: python fetch_blasttv_playwright.py
 
-    - name: Commit and push
-      run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "github-actions@github.com"
-        git add playlist.m3u8
-        git commit -m "Auto-update playlist" || exit 0
-        git push
+      - name: Commit and push
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add playlist.m3u8
+          git commit -m "Auto-update playlist" || exit 0
+          git push
