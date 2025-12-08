@@ -1,74 +1,45 @@
 import requests
 import json
 
-LOGIN_URL = "https://app.blasttv.ph/api/v2/login"
-LIVE_URL  = "https://app.blasttv.ph/api/v2/event/live?rpp=10"
+# Guest login endpoint
+GUEST_LOGIN_URL = "https://app.blasttv.ph/api/v2/login/guest/checkin"
+# Live events endpoint
+LIVE_URL = "https://app.blasttv.ph/api/v2/event/live?rpp=10"
 
-EMAIL = "YOUR_EMAIL_HERE"
-PASSWORD = "YOUR_PASSWORD_HERE"
-
-
-def get_token():
-    payload = {
-        "id": EMAIL,
-        "secret": PASSWORD
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "Origin": "https://app.blasttv.ph",
-        "Referer": "https://app.blasttv.ph/",
-        "Realm": "blasttv"   # <--- REQUIRED
-    }
-
-    res = requests.post(LOGIN_URL, json=payload, headers=headers)
-
-    print("LOGIN RESPONSE:", res.text)  # Debug
-
-    if res.status_code != 200:
-        print("Login failed:", res.text)
+def get_guest_token():
+    """Login as guest and return access token"""
+    try:
+        res = requests.post(GUEST_LOGIN_URL)
+        res.raise_for_status()
+    except requests.RequestException as e:
+        print("Guest login failed:", e)
         return None
 
     data = res.json()
-    return data.get("access_token") or data.get("data", {}).get("access_token")
+    token = data.get("access_token") or data.get("data", {}).get("access_token")
+    if not token:
+        print("No token found in response:", data)
+        return None
+    return token
 
-
-def fetch_live_streams(token):
+def fetch_live_events(token):
+    """Fetch live events using guest token"""
     headers = {
-        "Authorization": f"Bearer {token}",
-        "Origin": "https://app.blasttv.ph",
-        "Referer": "https://app.blasttv.ph/"
+        "Authorization": f"Bearer {token}"
     }
-
-    res = requests.get(LIVE_URL, headers=headers)
-
-    if res.status_code != 200:
-        print("Error fetching streams:", res.text)
+    try:
+        res = requests.get(LIVE_URL, headers=headers)
+        res.raise_for_status()
+    except requests.RequestException as e:
+        print("Fetching live events failed:", e)
         return None
 
     return res.json()
 
-
-def main():
-    token = get_token()
-    if not token:
-        return
-
-    print("\nTOKEN ACQUIRED:", token, "\n")
-
-    events_json = fetch_live_streams(token)
-    print(json.dumps(events_json, indent=4))
-
-    # Try extract stream url
-    for event in events_json.get("data", []):
-        print("\nEvent:", event.get("title"))
-        if "url" in event:
-            print("Stream URL:", event["url"])
-        elif "stream_url" in event:
-            print("Stream URL:", event["stream_url"])
-        else:
-            print("No stream URL found yet")
-
-
-if __name__ == "__main__":
-    main()
+def save_playlist(events, filename="playlist.m3u8"):
+    """Extract .m3u8 URLs and save to playlist file"""
+    lines = ["#EXTM3U"]
+    for event in events.get("data", []):
+        title = event.get("title", "Unknown")
+        stream_url = event.get("url") or event.get("stream_url")
+        if stream_url and stream_url.endswith(".m3u8"):
