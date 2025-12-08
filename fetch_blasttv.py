@@ -4,8 +4,8 @@ import json
 LOGIN_URL = "https://app.blasttv.ph/api/v2/login"
 LIVE_URL  = "https://app.blasttv.ph/api/v2/event/live?rpp=10"
 
-EMAIL = "candadofrances@gmail.com"
-PASSWORD = "Lmatt0603!"
+EMAIL = "YOUR_EMAIL_HERE"
+PASSWORD = "YOUR_PASSWORD_HERE"
 
 
 def get_token():
@@ -15,9 +15,10 @@ def get_token():
     }
 
     headers = {
-        "content-type": "application/json",
-        "origin": "https://app.blasttv.ph",
-        "referer": "https://app.blasttv.ph/"
+        "Content-Type": "application/json",
+        "Origin": "https://app.blasttv.ph",
+        "Referer": "https://app.blasttv.ph/",
+        "Realm": "blasttv"   # <--- REQUIRED
     }
 
     res = requests.post(LOGIN_URL, json=payload, headers=headers)
@@ -34,9 +35,9 @@ def get_token():
 
 def fetch_live_streams(token):
     headers = {
-        "authorization": f"Bearer {token}",
-        "origin": "https://app.blasttv.ph",
-        "referer": "https://app.blasttv.ph/"
+        "Authorization": f"Bearer {token}",
+        "Origin": "https://app.blasttv.ph",
+        "Referer": "https://app.blasttv.ph/"
     }
 
     res = requests.get(LIVE_URL, headers=headers)
